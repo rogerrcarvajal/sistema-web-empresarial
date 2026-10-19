@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  Proyecto: Sistema Web Empresarial — Módulo de Autenticación, Usuarios y RBAC
+  Autor: Rogerr Carvajal <rogerrcarvajal@gmail.com>
+  Rol: Desarrollador de Soluciones con Modelos & Agentes Inteligentes
+  Repositorio: https://github.com/rogerrcarvajal/sistema-web-empresarial
+  Estándar: Clean Architecture / Zero-Trust Security / SPA Reactivo Vanilla JS
+  ============================================================================
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema Web Empresarial — Core Auth &amp; RBAC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+  <!-- Contenedor de Notificaciones Toast -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- ========================================================================
+       1. VISTA DE AUTENTICACIÓN (LOGIN, REGISTRO CONFIGURABLE Y RECUPERACIÓN)
+       ======================================================================== -->
+  <main id="auth-view" class="auth-wrapper">
+    <section class="auth-shell">
+      <!-- Panel Izquierdo: Identidad Corporativa y Arquitectura -->
+      <aside class="auth-hero">
+        <div>
+          <span class="brand-badge">Zero-Trust Enterprise Auth</span>
+          <h1 id="hero-app-title">Sistema Web Empresarial</h1>
+          <p id="hero-app-subtitle">
+            Arquitectura modular de autenticación, control de acceso basado en roles (RBAC) y sesiones seguras sobre Google Apps Script + Google Sheets.
+          </p>
+
+          <div class="feature-pills">
+            <div class="feature-pill">
+              <span class="icon">🔐</span>
+              <span><strong>Hash SHA-256 Iterado + Salt Único:</strong> Cero contraseñas en texto plano.</span>
+            </div>
+            <div class="feature-pill">
+              <span class="icon">🛡️</span>
+              <span><strong>Autenticación vs. Autorización:</strong> Permisos validados en servidor en cada llamada.</span>
+            </div>
+            <div class="feature-pill">
+              <span class="icon">⚡</span>
+              <span><strong>Alto Rendimiento:</strong> Operaciones por lotes (Batch I/O) y caché multicapa.</span>
+            </div>
+            <div class="feature-pill">
+              <span class="icon">🏢</span>
+              <span><strong>Multi-Módulo:</strong> Listo para Inventario, Ventas, Logística y SSOMA.</span>
+            </div>
+          </div>
+        </div>
+
+        <footer style="margin-top: 2rem; font-size: 0.78rem; color: var(--text-muted);">
+          Desarrollado por <strong style="color: var(--accent-cyan);">Rogerr Carvajal (@rogerrcarvajal)</strong> · Ingeniería de IA y Agentes Inteligentes
+        </footer>
+      </aside>
+
+      <!-- Panel Derecho: Formularios de Acceso -->
+      <div class="auth-form-panel">
+        <div class="auth-tabs" role="tablist">
+          <button type="button" id="tab-btn-login" class="auth-tab active" onclick="AppController.switchAuthTab('login')">
+            Iniciar Sesión
+          </button>
+          <button type="button" id="tab-btn-register" class="auth-tab" onclick="AppController.switchAuthTab('register')">
+            Crear Cuenta
+          </button>
+          <button type="button" id="tab-btn-recover" class="auth-tab" onclick="AppController.switchAuthTab('recover')">
+            Recuperar Clave
+          </button>
+        </div>
+
+        <!-- Formulario 1: Login -->
+        <form id="form-login" onsubmit="AppController.handleLogin(event)">
+          <div class="form-group">
+            <label class="form-label" for="login-email">Correo Electrónico Corporativo</label>
+            <input
+              type="email"
+              id="login-email"
+              class="form-control"
+              placeholder="admin@empresa.com"
+              required
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="login-password">Contraseña</label>
+            <input
+              type="password"
+              id="login-password"
+              class="form-control"
+              placeholder="••••••••••••"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block">
+            Acceder al Sistema
+          </button>
+
+          <div class="card-glass" style="margin-top: 1.25rem; padding: 0.9rem; font-size: 0.8rem;">
+            <div style="color: var(--accent-cyan); font-weight: 600; margin-bottom: 0.25rem;">
+              Credenciales Iniciales de Demostración (Semilla Automática):
+            </div>
+            <div style="color: var(--text-secondary);">
+              • <strong>Admin:</strong> <code>admin@empresa.com</code> / <code>Admin2026!</code><br />
+              • <strong>Supervisor:</strong> <code>supervisor@empresa.com</code> / <code>Supervisor2026!</code>
+            </div>
+          </div>
+        </form>
+
+        <!-- Formulario 2: Registro de Usuario (Configurable por Admin) -->
+        <form id="form-register" class="hidden" onsubmit="AppController.handleRegister(event)">
+          <div class="form-group">
+            <label class="form-label" for="reg-name">Nombre Completo</label>
+            <input
+              type="text"
+              id="reg-name"
+              class="form-control"
+              placeholder="Ej. María Fernanda López"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-email">Correo Electrónico</label>
+            <input
+              type="email"
+              id="reg-email"
+              class="form-control"
+              placeholder="usuario@empresa.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Contraseña Segura</label>
+            <input
+              type="password"
+              id="reg-password"
+              class="form-control"
+              placeholder="Mínimo 8 caracteres, mayúscula y número"
+              required
+            />
+            <p class="form-helper">Tu contraseña nunca se almacena en texto plano; se procesa con Salt único y SHA-256 iterado.</p>
+          </div>
+
+          <button type="submit" id="btn-submit-register" class="btn btn-primary btn-block">
+            Registrar Cuenta
+          </button>
+        </form>
+
+        <!-- Formulario 3: Recuperación de Contraseña con Código OTP por Correo -->
+        <div id="form-recover" class="hidden">
+          <form id="subform-request-reset" onsubmit="AppController.handleRequestReset(event)">
+            <div class="form-group">
+              <label class="form-label" for="recover-email">Correo Asociado a tu Cuenta</label>
+              <input
+                type="email"
+                id="recover-email"
+                class="form-control"
+                placeholder="usuario@empresa.com"
+                required
+              />
+              <p class="form-helper">
+                Por seguridad, enviaremos un código temporal de 15 minutos sin revelar si el correo está registrado.
+              </p>
+            </div>
+            <button type="submit" id="btn-request-code" class="btn btn-primary btn-block">
+              Enviar Código de Verificación
+            </button>
+          </form>
+
+          <hr style="border: none; border-top: 1px solid var(--border-glass); margin: 1.35rem 0;" />
+
+          <form id="subform-confirm-reset" onsubmit="AppController.handleConfirmReset(event)">
+            <div class="form-group">
+              <label class="form-label" for="recover-code">Código de Seguridad Recibido (8 caracteres)</label>
+              <input
+                type="text"
+                id="recover-code"
+                class="form-control"
+                placeholder="A1B2C3D4"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="recover-new-password">Nueva Contraseña</label>
+              <input
+                type="password"
+                id="recover-new-password"
+                class="form-control"
+                placeholder="Mínimo 8 caracteres, mayúscula y número"
+                required
+              />
+            </div>
+
+            <button type="submit" id="btn-confirm-reset" class="btn btn-secondary btn-block">
+              Confirmar y Restablecer Contraseña
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================================
+       2. APLICACIÓN EMPRESARIAL PROTEGIDA (DASHBOARD + RBAC + PERFIL + MÓDULOS)
+       ======================================================================== -->
+  <div id="app-view" class="app-layout hidden">
+    <!-- Barra Lateral con Rutas Protegidas por Permisos -->
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-brand">
+          <h2>Enterprise Core</h2>
+          <small id="sidebar-role-badge">Cargando Rol...</small>
+        </div>
+
+        <div class="nav-section-title">Principal</div>
+        <ul class="nav-list">
+          <li>
+            <button type="button" id="nav-dashboard" class="nav-item active" onclick="AppController.navigate('dashboard')">
+              <span>📊 Panel de Control</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" id="nav-profile" class="nav-item" onclick="AppController.navigate('profile')">
+              <span>👤 Mi Perfil y Clave</span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="nav-section-title">Administración RBAC</div>
+        <ul class="nav-list">
+          <li id="nav-item-users" class="hidden">
+            <button type="button" id="nav-users" class="nav-item" onclick="AppController.navigate('users')">
+              <span>👥 Gestión de Usuarios</span>
+            </button>
+          </li>
+          <li id="nav-item-roles" class="hidden">
+            <button type="button" id="nav-roles" class="nav-item" onclick="AppController.navigate('roles')">
+              <span>🎭 Roles y Permisos</span>
+            </button>
+          </li>
+          <li id="nav-item-audit" class="hidden">
+            <button type="button" id="nav-audit" class="nav-item" onclick="AppController.navigate('audit')">
+              <span>🛡️ Bitácora Zero-Trust</span>
+            </button>
+          </li>
+        </ul>
+
+        <div class="nav-section-title">Módulos de Negocio</div>
+        <ul class="nav-list">
+          <li>
+            <button type="button" id="nav-modules" class="nav-item" onclick="AppController.navigate('modules')">
+              <span>🚀 Suite Empresarial</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <button type="button" id="btn-logout" class="btn btn-danger btn-block" onclick="AppController.handleLogout()">
+          Cerrar Sesión Segura
+        </button>
+      </div>
+    </aside>
+
+    <!-- Área Principal -->
+    <div class="main-area">
+      <header class="topbar">
+        <div>
+          <strong id="topbar-view-title" style="font-size: 1.05rem;">Panel de Control</strong>
+        </div>
+        <div class="user-pill">
+          <div style="text-align: right;">
+            <div id="topbar-user-name" style="font-weight: 600; font-size: 0.9rem;">Usuario</div>
+            <div id="topbar-user-email" style="font-size: 0.76rem; color: var(--text-secondary);">correo@empresa.com</div>
+          </div>
+          <div id="topbar-avatar" class="avatar-circle">U</div>
+        </div>
+      </header>
+
+      <div class="content-container">
+        <!-- SECCIÓN 2.1: DASHBOARD PRINCIPAL -->
+        <section id="section-dashboard" class="view-section">
+          <div class="metrics-grid">
+            <div class="card-glass metric-card">
+              <div class="metric-label">Usuarios Registrados</div>
+              <div id="metric-total-users" class="metric-value">0</div>
+            </div>
+            <div class="card-glass metric-card">
+              <div class="metric-label">Usuarios Activos</div>
+              <div id="metric-active-users" class="metric-value">0</div>
+            </div>
+            <div class="card-glass metric-card">
+              <div class="metric-label">Sesiones Vigentes</div>
+              <div id="metric-active-sessions" class="metric-value">0</div>
+            </div>
+            <div class="card-glass metric-card">
+              <div class="metric-label">Permisos Activos en tu Rol</div>
+              <div id="metric-my-permissions" class="metric-value">0</div>
+            </div>
+          </div>
+
+          <div class="card-glass" style="margin-bottom: 1.5rem;">
+            <h3 style="margin-bottom: 0.65rem; color: var(--accent-cyan);">
+              Mis Permisos Efectivos de Autorización (Validados en Servidor)
+            </h3>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
+              Tu sesión está autenticada y tu rol actual te otorga los siguientes códigos de autorización para operar en la plataforma:
+            </p>
+            <div id="dashboard-user-permissions" style="display: flex; flex-wrap: wrap; gap: 0.5rem;"></div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 2.2: GESTIÓN DE USUARIOS (REQUIERE USERS_VIEW / USERS_MANAGE) -->
+        <section id="section-users" class="view-section hidden">
+          <div style="display: grid; grid-template-columns: 1fr 360px; gap: 1.5rem; align-items: start;">
+            <div class="card-glass">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3>Directorio de Usuarios</h3>
+                <button type="button" id="btn-new-user-reset" class="btn btn-secondary" onclick="AppController.resetUserForm()">
+                  + Limpiar Formulario
+                </button>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Nombre / Correo</th>
+                      <th>Rol</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card-glass">
+              <h3 id="user-form-title" style="margin-bottom: 1rem; color: var(--accent-cyan);">Crear / Editar Usuario</h3>
+              <form id="form-admin-user" onsubmit="AppController.handleSaveUser(event)">
+                <input type="hidden" id="admin-user-id" />
+                <div class="form-group">
+                  <label class="form-label" for="admin-user-name">Nombre Completo</label>
+                  <input type="text" id="admin-user-name" class="form-control" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="admin-user-email">Correo Electrónico</label>
+                  <input type="email" id="admin-user-email" class="form-control" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="admin-user-role">Rol Asignado</label>
+                  <select id="admin-user-role" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="admin-user-status">Estado de Cuenta</label>
+                  <select id="admin-user-status" class="form-control">
+                    <option value="ACTIVO">ACTIVO</option>
+                    <option value="SUSPENDIDO">SUSPENDIDO</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="admin-user-password">Contraseña (Obligatoria al crear / Opcional al editar)</label>
+                  <input type="password" id="admin-user-password" class="form-control" placeholder="Mínimo 8 caracteres, mayúscula y número" />
+                </div>
+                <button type="submit" id="btn-save-user" class="btn btn-primary btn-block">
+                  Guardar Usuario en Sheets
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 2.3: ROLES, PERMISOS Y CONFIGURACIÓN (REQUIERE ROLES_MANAGE) -->
+        <section id="section-roles" class="view-section hidden">
+          <div style="display: grid; gap: 1.5rem;">
+            <div class="card-glass">
+              <h3 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Matriz RBAC: Asignación de Permisos por Rol</h3>
+              <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                Selecciona un rol empresarial y activa o desactiva sus permisos. La actualización se realiza en una sola escritura por lotes (Batch Write) y refresca la caché del servidor.
+              </p>
+
+              <div class="form-group" style="max-width: 360px;">
+                <label class="form-label" for="rbac-role-selector">Seleccionar Rol a Configurar</label>
+                <select id="rbac-role-selector" class="form-control" onchange="AppController.renderRolePermissionsCheckboxes()"></select>
+              </div>
+
+              <div id="rbac-permissions-container" class="permissions-grid"></div>
+
+              <div style="margin-top: 1.25rem;">
+                <button type="button" id="btn-save-rbac" class="btn btn-primary" onclick="AppController.handleSaveRolePermissions()">
+                  Guardar Matriz de Permisos del Rol
+                </button>
+              </div>
+            </div>
+
+            <div class="card-glass">
+              <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">Políticas Globales de Seguridad y Registro</h3>
+              <form id="form-admin-settings" onsubmit="AppController.handleSaveSettings(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+                <div class="form-group">
+                  <label class="form-label" for="setting-allow-reg">Auto-Registro Público en Login</label>
+                  <select id="setting-allow-reg" class="form-control">
+                    <option value="true">Habilitado (Público)</option>
+                    <option value="false">Deshabilitado (Solo Admin)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="setting-session-ttl">Expiración de Sesión (Minutos)</label>
+                  <input type="number" id="setting-session-ttl" class="form-control" min="15" max="1440" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="setting-max-attempts">Intentos Fallidos antes de Bloqueo</label>
+                  <input type="number" id="setting-max-attempts" class="form-control" min="3" max="15" required />
+                </div>
+                <div style="display: flex; align-items: flex-end; margin-bottom: 1.15rem;">
+                  <button type="submit" id="btn-save-settings" class="btn btn-secondary btn-block">
+                    Actualizar Políticas
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 2.4: PERFIL DE USUARIO Y CAMBIO DE CONTRASEÑA -->
+        <section id="section-profile" class="view-section hidden">
+          <div class="card-glass" style="max-width: 620px;">
+            <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">Mi Perfil y Seguridad de Cuenta</h3>
+            <form id="form-profile" onsubmit="AppController.handleUpdateProfile(event)">
+              <div class="form-group">
+                <label class="form-label" for="profile-name">Nombre Completo</label>
+                <input type="text" id="profile-name" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="profile-email">Correo Corporativo (Solo lectura)</label>
+                <input type="email" id="profile-email" class="form-control" disabled />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="profile-role">Rol Asignado</label>
+                <input type="text" id="profile-role" class="form-control" disabled />
+              </div>
+
+              <hr style="border: none; border-top: 1px solid var(--border-glass); margin: 1.25rem 0;" />
+              <h4 style="margin-bottom: 0.85rem;">Cambiar Contraseña (Opcional)</h4>
+
+              <div class="form-group">
+                <label class="form-label" for="profile-current-password">Contraseña Actual</label>
+                <input type="password" id="profile-current-password" class="form-control" placeholder="Ingresa tu contraseña actual si deseas cambiarla" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="profile-new-password">Nueva Contraseña Segura</label>
+                <input type="password" id="profile-new-password" class="form-control" placeholder="Mínimo 8 caracteres, mayúscula y número" />
+              </div>
+
+              <button type="submit" id="btn-save-profile" class="btn btn-primary">
+                Actualizar Perfil
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 2.5: BITÁCORA DE AUDITORÍA ZERO-TRUST -->
+        <section id="section-audit" class="view-section hidden">
+          <div class="card-glass">
+            <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">Bitácora de Eventos de Seguridad (Últimos 30 registros)</h3>
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha / Hora (ISO)</th>
+                    <th>Usuario / Correo</th>
+                    <th>Evento</th>
+                    <th>Módulo</th>
+                    <th>Resultado</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SECCIÓN 2.6: CONECTOR DE MÓDULOS EMPRESARIALES (INVENTARIO, VENTAS, LOGÍSTICA, SSOMA) -->
+        <section id="section-modules" class="view-section hidden">
+          <div class="card-glass" style="margin-bottom: 1.5rem;">
+            <h3 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">
+              Arquitectura Base para Sistemas de Inventario, Ventas, Logística y SSOMA
+            </h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Prueba en tiempo real la validación de autorización en el servidor (<code>requireAuthAndPermission_</code>). Cada tarjeta invoca al backend verificando que tu rol posea el permiso específico del módulo.
+            </p>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="card-glass">
+              <h4>📦 Módulo de Inventario y Almacenes</h4>
+              <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 0.5rem 0 1rem;">
+                Requiere permiso: <code>INVENTARIO_ACCESS</code>
+              </p>
+              <button type="button" id="btn-mod-inventario" class="btn btn-primary btn-block" onclick="AppController.testModuleAccess('INVENTARIO')">
+                Validar y Abrir Inventario
+              </button>
+            </div>
+
+            <div class="card-glass">
+              <h4>💳 Módulo de Ventas y Facturación</h4>
+              <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 0.5rem 0 1rem;">
+                Requiere permiso: <code>VENTAS_ACCESS</code>
+              </p>
+              <button type="button" id="btn-mod-ventas" class="btn btn-primary btn-block" onclick="AppController.testModuleAccess('VENTAS')">
+                Validar y Abrir Ventas
+              </button>
+            </div>
+
+            <div class="card-glass">
+              <h4>🚚 Módulo de Logística y Despacho</h4>
+              <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 0.5rem 0 1rem;">
+                Requiere permiso: <code>LOGISTICA_ACCESS</code>
+              </p>
+              <button type="button" id="btn-mod-logistica" class="btn btn-primary btn-block" onclick="AppController.testModuleAccess('LOGISTICA')">
+                Validar y Abrir Logística
+              </button>
+            </div>
+
+            <div class="card-glass">
+              <h4>🦺 Gestión SSOMA (Seguridad y Salud)</h4>
+              <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 0.5rem 0 1rem;">
+                Requiere permiso: <code>SSOMA_ACCESS</code>
+              </p>
+              <button type="button" id="btn-mod-ssoma" class="btn btn-primary btn-block" onclick="AppController.testModuleAccess('SSOMA')">
+                Validar y Abrir SSOMA
+              </button>
+            </div>
+          </div>
+
+          <div id="module-response-box" class="card-glass hidden">
+            <h4 style="color: var(--accent-cyan); margin-bottom: 0.4rem;">Respuesta del Servidor Apps Script:</h4>
+            <pre id="module-response-pre" style="font-size: 0.83rem; color: var(--text-primary); white-space: pre-wrap;"></pre>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       3. CONTROLADOR FRONTEND MODULAR (CON SOPORTE GAS Y MODO SIMULACIÓN LOCAL)
+       ======================================================================== -->
+  <script>
+    const AppController = (() => {
+      const STORAGE_TOKEN_KEY = 'RC_ENTERPRISE_SESSION_TOKEN_V1';
+
+      const state = {
+        sessionToken: localStorage.getItem(STORAGE_TOKEN_KEY) || '',
+        user: null,
+        roles: [],
+        permissions: [],
+        users: [],
+        settings: {},
+        auditLogs: []
+      };
+
+      /**
+       * Ejecuta una función del servidor en Google Apps Script (`google.script.run`).
+       * Si se abre localmente fuera de Apps Script para previsualización, utiliza un puente de simulación seguro.
+       */
+      function callServer(methodName, ...args) {
+        return new Promise((resolve, reject) => {
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler(resolve)
+              .withFailureHandler(reject)[methodName](...args);
+          } else {
+            // Modo previsualización local cuando se abre fuera del contenedor de Google Apps Script
+            setTimeout(() => {
+              resolve(LocalPreviewMock.handle(methodName, args));
+            }, 220);
+          }
+        });
+      }
+
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.remove();
+        }, 4200);
+      }
+
+      function switchAuthTab(tabName) {
+        ['login', 'register', 'recover'].forEach(t => {
+          document.getElementById('tab-btn-' + t).classList.toggle('active', t === tabName);
+          document.getElementById('form-' + t).classList.toggle('hidden', t !== tabName);
+        });
+      }
+
+      function hasPermission(permCode) {
+        if (!state.user || !Array.isArray(state.user.permisos)) return false;
+        return state.user.permisos.indexOf(permCode) !== -1;
+      }
+
+      async function init() {
+        try {
+          const res = await callServer('apiGetBootstrapState', state.sessionToken);
+          if (res && res.config) {
+            document.getElementById('tab-btn-register').classList.toggle('hidden', !res.config.allowPublicRegistration);
+          }
+          if (res && res.authenticated && res.user) {
+            state.user = res.user;
+            if (res.catalogs) {
+              state.roles = res.catalogs.roles || [];
+              state.permissions = res.catalogs.permissions || [];
+            }
+            enterAuthenticatedApp();
+          } else {
+            if (state.sessionToken) {
+              localStorage.removeItem(STORAGE_TOKEN_KEY);
+              state.sessionToken = '';
+            }
+            showAuthScreen();
+          }
+        } catch (err) {
+          showAuthScreen();
+        }
+      }
+
+      function showAuthScreen() {
+        document.getElementById('auth-view').classList.remove('hidden');
+        document.getElementById('app-view').classList.add('hidden');
+      }
+
+      async function enterAuthenticatedApp() {
+        document.getElementById('auth-view').classList.add('hidden');
+        document.getElementById('app-view').classList.remove('hidden');
+        renderUserHeaderAndNav();
+        await loadDashboardBundle();
+        navigate('dashboard');
+      }
+
+      function renderUserHeaderAndNav() {
+        const u = state.user;
+        if (!u) return;
+        document.getElementById('topbar-user-name').textContent = u.nombre_completo;
+        document.getElementById('topbar-user-email').textContent = u.email;
+        document.getElementById('sidebar-role-badge').textContent = u.nombre_rol;
+        document.getElementById('topbar-avatar').textContent = u.nombre_completo.charAt(0).toUpperCase();
+
+        // Mostrar u ocultar rutas del menú según permisos RBAC
+        document.getElementById('nav-item-users').classList.toggle('hidden', !hasPermission('USERS_VIEW'));
+        document.getElementById('nav-item-roles').classList.toggle('hidden', !hasPermission('ROLES_MANAGE'));
+        document.getElementById('nav-item-audit').classList.toggle('hidden', !hasPermission('AUDIT_VIEW'));
+
+        // Poblar datos del perfil personal
+        document.getElementById('profile-name').value = u.nombre_completo;
+        document.getElementById('profile-email').value = u.email;
+        document.getElementById('profile-role').value = u.nombre_rol + ' (' + u.rol_id + ')';
+
+        // Renderizar badges de permisos en el Dashboard
+        const permsWrap = document.getElementById('dashboard-user-permissions');
+        permsWrap.innerHTML = '';
+        (u.permisos || []).forEach(code => {
+          const span = document.createElement('span');
+          span.className = 'badge badge-info';
+          span.textContent = code;
+          permsWrap.appendChild(span);
+        });
+        document.getElementById('metric-my-permissions').textContent = (u.permisos || []).length;
+      }
+
+      async function loadDashboardBundle() {
+        const res = await callServer('apiGetAdminDashboardData', state.sessionToken);
+        if (!res || !res.success) return;
+
+        if (res.metrics) {
+          document.getElementById('metric-total-users').textContent = res.metrics.totalUsers;
+          document.getElementById('metric-active-users').textContent = res.metrics.activeUsers;
+          document.getElementById('metric-active-sessions').textContent = res.metrics.activeSessions;
+        }
+
+        state.users = res.users || [];
+        state.roles = res.roles || state.roles;
+        state.permissions = res.permissions || state.permissions;
+        state.settings = res.settings || {};
+        state.auditLogs = res.auditLogs || [];
+
+        renderUsersTable();
+        renderRoleSelectors();
+        renderAuditTable();
+        renderSettingsForm();
+      }
+
+      function renderUsersTable() {
+        const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        const canManage = hasPermission('USERS_MANAGE');
+
+        state.users.forEach(u => {
+          const tr = document.createElement('tr');
+          const statusClass = u.estado === 'ACTIVO' ? 'badge-success' : 'badge-danger';
+          tr.innerHTML =
+            '<td><code>' + escapeHtml_(u.id_usuario) + '</code></td>' +
+            '<td><strong>' + escapeHtml_(u.nombre_completo) + '</strong><br/><span style="color:var(--text-secondary);font-size:0.78rem;">' + escapeHtml_(u.email) + '</span></td>' +
+            '<td><span class="badge badge-info">' + escapeHtml_(u.nombre_rol) + '</span></td>' +
+            '<td><span class="badge ' + statusClass + '">' + escapeHtml_(u.estado) + '</span></td>' +
+            '<td>' +
+            (canManage
+              ? '<button type="button" class="btn btn-secondary" style="padding:0.35rem 0.7rem;font-size:0.78rem;" onclick="AppController.selectUserForEdit(\'' + u.id_usuario + '\')">Editar</button>'
+              : '<span style="color:var(--text-muted);font-size:0.78rem;">Solo lectura</span>') +
+            '</td>';
+          tbody.appendChild(tr);
+        });
+      }
+
+      function renderRoleSelectors() {
+        const userRoleSelect = document.getElementById('admin-user-role');
+        const rbacRoleSelect = document.getElementById('rbac-role-selector');
+        if (!userRoleSelect || !rbacRoleSelect) return;
+
+        const currentRbacSelection = rbacRoleSelect.value;
+        userRoleSelect.innerHTML = '';
+        rbacRoleSelect.innerHTML = '';
+
+        state.roles.forEach(r => {
+          const opt1 = document.createElement('option');
+          opt1.value = r.id_rol;
+          opt1.textContent = r.nombre_rol + ' (' + r.id_rol + ')';
+          userRoleSelect.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = r.id_rol;
+          opt2.textContent = r.nombre_rol + ' — ' + r.descripcion;
+          rbacRoleSelect.appendChild(opt2);
+        });
+
+        if (currentRbacSelection) {
+          rbacRoleSelect.value = currentRbacSelection;
+        }
+        renderRolePermissionsCheckboxes();
+      }
+
+      function renderRolePermissionsCheckboxes() {
+        const roleId = document.getElementById('rbac-role-selector').value;
+        const container = document.getElementById('rbac-permissions-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        const roleObj = state.roles.find(r => r.id_rol === roleId);
+        const activePerms = (roleObj && roleObj.permisos) || [];
+
+        state.permissions.forEach(p => {
+          const checked = activePerms.indexOf(p.codigo_permiso) !== -1 ? 'checked' : '';
+          const label = document.createElement('label');
+          label.className = 'perm-checkbox-card';
+          label.innerHTML =
+            '<input type="checkbox" class="rbac-perm-check" value="' + escapeHtml_(p.codigo_permiso) + '" ' + checked + ' style="margin-top:0.25rem;" />' +
+            '<div>' +
+            '<div style="font-weight:600;font-size:0.86rem;color:var(--accent-cyan);">' + escapeHtml_(p.codigo_permiso) + ' <span style="color:var(--text-muted);font-size:0.74rem;">[' + escapeHtml_(p.modulo) + ']</span></div>' +
+            '<div style="font-size:0.78rem;color:var(--text-secondary);">' + escapeHtml_(p.descripcion) + '</div>' +
+            '</div>';
+          container.appendChild(label);
+        });
+      }
+
+      function renderSettingsForm() {
+        const s = state.settings || {};
+        if (s.ALLOW_PUBLIC_REGISTRATION !== undefined) {
+          document.getElementById('setting-allow-reg').value = String(s.ALLOW_PUBLIC_REGISTRATION).toLowerCase();
+        }
+        if (s.SESSION_TTL_MINUTES !== undefined) {
+          document.getElementById('setting-session-ttl').value = s.SESSION_TTL_MINUTES;
+        }
+        if (s.MAX_LOGIN_ATTEMPTS !== undefined) {
+          document.getElementById('setting-max-attempts').value = s.MAX_LOGIN_ATTEMPTS;
+        }
+      }
+
+      function renderAuditTable() {
+        const tbody = document.getElementById('audit-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        state.auditLogs.forEach(log => {
+          const tr = document.createElement('tr');
+          const badgeClass = log.resultado === 'OK' ? 'badge-success' : 'badge-danger';
+          tr.innerHTML =
+            '<td style="font-size:0.78rem;color:var(--text-secondary);">' + escapeHtml_(log.timestamp) + '</td>' +
+            '<td><strong>' + escapeHtml_(log.email) + '</strong><br/><small style="color:var(--text-muted);">' + escapeHtml_(log.id_usuario) + '</small></td>' +
+            '<td><code>' + escapeHtml_(log.evento) + '</code></td>' +
+            '<td>' + escapeHtml_(log.modulo) + '</td>' +
+            '<td><span class="badge ' + badgeClass + '">' + escapeHtml_(log.resultado) + '</span></td>' +
+            '<td style="font-size:0.82rem;color:var(--text-secondary);">' + escapeHtml_(log.detalle) + '</td>';
+          tbody.appendChild(tr);
+        });
+      }
+
+      function navigate(sectionKey) {
+        const permissionGuards = {
+          users: 'USERS_VIEW',
+          roles: 'ROLES_MANAGE',
+          audit: 'AUDIT_VIEW'
+        };
+
+        if (permissionGuards[sectionKey] && !hasPermission(permissionGuards[sectionKey])) {
+          showToast('Acceso denegado: Tu rol no posee el permiso ' + permissionGuards[sectionKey], 'error');
+          return;
+        }
+
+        const titles = {
+          dashboard: 'Panel de Control y Estado de Seguridad',
+          users: 'Gestión de Usuarios y Cuentas Corporativas',
+          roles: 'Matriz RBAC de Roles, Permisos y Políticas',
+          profile: 'Mi Perfil Personal y Credenciales',
+          audit: 'Bitácora de Auditoría Zero-Trust',
+          modules: 'Suite de Módulos Empresariales (Inventario, Ventas, Logística, SSOMA)'
+        };
+
+        document.getElementById('topbar-view-title').textContent = titles[sectionKey] || 'Panel';
+
+        ['dashboard', 'users', 'roles', 'profile', 'audit', 'modules'].forEach(k => {
+          const sec = document.getElementById('section-' + k);
+          const nav = document.getElementById('nav-' + k);
+          if (sec) sec.classList.toggle('hidden', k !== sectionKey);
+          if (nav) nav.classList.toggle('active', k === sectionKey);
+        });
+      }
+
+      async function handleLogin(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-login');
+        btn.disabled = true;
+        try {
+          const email = document.getElementById('login-email').value;
+          const password = document.getElementById('login-password').value;
+          const res = await callServer('apiLogin', { email, password });
+          if (res && res.success) {
+            state.sessionToken = res.sessionToken;
+            localStorage.setItem(STORAGE_TOKEN_KEY, res.sessionToken);
+            state.user = res.user;
+            if (res.catalogs) {
+              state.roles = res.catalogs.roles || [];
+              state.permissions = res.catalogs.permissions || [];
+            }
+            showToast(res.message, 'success');
+            await enterAuthenticatedApp();
+          } else {
+            showToast((res && res.message) || 'Error de autenticación', 'error');
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function handleRegister(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-register');
+        btn.disabled = true;
+        try {
+          const payload = {
+            nombre_completo: document.getElementById('reg-name').value,
+            email: document.getElementById('reg-email').value,
+            password: document.getElementById('reg-password').value
+          };
+          const res = await callServer('apiRegisterPublicUser', payload);
+          if (res && res.success) {
+            showToast(res.message, 'success');
+            document.getElementById('form-register').reset();
+            switchAuthTab('login');
+          } else {
+            showToast((res && res.message) || 'Error en el registro', 'error');
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function handleRequestReset(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-request-code');
+        btn.disabled = true;
+        try {
+          const email = document.getElementById('recover-email').value;
+          const res = await callServer('apiRequestPasswordReset', email);
+          showToast(res.message, res.success ? 'success' : 'error');
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function handleConfirmReset(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-confirm-reset');
+        btn.disabled = true;
+        try {
+          const payload = {
+            email: document.getElementById('recover-email').value,
+            code: document.getElementById('recover-code').value,
+            newPassword: document.getElementById('recover-new-password').value
+          };
+          const res = await callServer('apiConfirmPasswordReset', payload);
+          if (res && res.success) {
+            showToast(res.message, 'success');
+            document.getElementById('subform-confirm-reset').reset();
+            switchAuthTab('login');
+          } else {
+            showToast((res && res.message) || 'Código inválido', 'error');
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function handleLogout() {
+        await callServer('apiLogout', state.sessionToken);
+        localStorage.removeItem(STORAGE_TOKEN_KEY);
+        state.sessionToken = '';
+        state.user = null;
+        showToast('Sesión cerrada de forma segura.', 'info');
+        showAuthScreen();
+      }
+
+      function selectUserForEdit(userId) {
+        const u = state.users.find(item => item.id_usuario === userId);
+        if (!u) return;
+        document.getElementById('user-form-title').textContent = 'Editar Usuario: ' + u.id_usuario;
+        document.getElementById('admin-user-id').value = u.id_usuario;
+        document.getElementById('admin-user-name').value = u.nombre_completo;
+        document.getElementById('admin-user-email').value = u.email;
+        document.getElementById('admin-user-role').value = u.rol_id;
+        document.getElementById('admin-user-status').value = u.estado;
+        document.getElementById('admin-user-password').value = '';
+      }
+
+      function resetUserForm() {
+        document.getElementById('user-form-title').textContent = 'Crear Nuevo Usuario';
+        document.getElementById('form-admin-user').reset();
+        document.getElementById('admin-user-id').value = '';
+      }
+
+      async function handleSaveUser(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-user');
+        btn.disabled = true;
+        try {
+          const payload = {
+            id_usuario: document.getElementById('admin-user-id').value,
+            nombre_completo: document.getElementById('admin-user-name').value,
+            email: document.getElementById('admin-user-email').value,
+            rol_id: document.getElementById('admin-user-role').value,
+            estado: document.getElementById('admin-user-status').value,
+            password: document.getElementById('admin-user-password').value
+          };
+          const res = await callServer('apiAdminSaveUser', state.sessionToken, payload);
+          if (res && res.success) {
+            showToast(res.message, 'success');
+            resetUserForm();
+            await loadDashboardBundle();
+          } else {
+            showToast((res && res.message) || 'Error al guardar usuario', 'error');
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function handleSaveRolePermissions() {
+        const btn = document.getElementById('btn-save-rbac');
+        btn.disabled = true;
+        try {
+          const roleId = document.getElementById('rbac-role-selector').value;
+          const checks = Array.from(document.querySelectorAll('.rbac-perm-check:checked')).map(c => c.value);
+          const res = await callServer('apiAdminUpdateRolePermissions', state.sessionToken, {
+            id_rol: roleId,
+            permisos: checks
+          });
+          if (res && res.success) {
+            showToast(res.message, 'success');
+            await loadDashboardBundle();
+          } else {
+            showToast((res && res.message) || 'Error al actualizar permisos', 'error');
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      async function handleSaveSettings(e) {
+        e.preventDefault();
+        const payload = {
+          ALLOW_PUBLIC_REGISTRATION: document.getElementById('setting-allow-reg').value,
+          SESSION_TTL_MINUTES: document.getElementById('setting-session-ttl').value,
+          MAX_LOGIN_ATTEMPTS: document.getElementById('setting-max-attempts').value
+        };
+        const res = await callServer('apiAdminUpdateSettings', state.sessionToken, payload);
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          await loadDashboardBundle();
+        } else {
+          showToast((res && res.message) || 'No se pudo actualizar la configuración', 'error');
+        }
+      }
+
+      async function handleUpdateProfile(e) {
+        e.preventDefault();
+        const payload = {
+          nombre_completo: document.getElementById('profile-name').value,
+          currentPassword: document.getElementById('profile-current-password').value,
+          newPassword: document.getElementById('profile-new-password').value
+        };
+        const res = await callServer('apiUpdateOwnProfile', state.sessionToken, payload);
+        if (res && res.success) {
+          state.user = res.user;
+          renderUserHeaderAndNav();
+          document.getElementById('profile-current-password').value = '';
+          document.getElementById('profile-new-password').value = '';
+          showToast(res.message, 'success');
+        } else {
+          showToast((res && res.message) || 'Error actualizando perfil', 'error');
+        }
+      }
+
+      async function testModuleAccess(moduleKey) {
+        const res = await callServer('apiExecuteProtectedModuleAction', state.sessionToken, moduleKey);
+        const box = document.getElementById('module-response-box');
+        const pre = document.getElementById('module-response-pre');
+        box.classList.remove('hidden');
+        pre.textContent = JSON.stringify(res, null, 2);
+        if (res && res.success) {
+          showToast(res.message, 'success');
+          await loadDashboardBundle();
+        } else {
+          showToast((res && res.message) || 'Acceso denegado al módulo', 'error');
+        }
+      }
+
+      function escapeHtml_(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      return {
+        init,
+        switchAuthTab,
+        navigate,
+        handleLogin,
+        handleRegister,
+        handleRequestReset,
+        handleConfirmReset,
+        handleLogout,
+        selectUserForEdit,
+        resetUserForm,
+        handleSaveUser,
+        renderRolePermissionsCheckboxes,
+        handleSaveRolePermissions,
+        handleSaveSettings,
+        handleUpdateProfile,
+        testModuleAccess
+      };
+    })();
+
+    /**
+     * Puente de Simulación Local (Solo se activa si el archivo HTML se abre fuera de Google Apps Script)
+     */
+    const LocalPreviewMock = (() => {
+      const mockRoles = [
+        {
+          id_rol: 'ROL_ADMIN',
+          nombre_rol: 'Administrador Global',
+          descripcion: 'Control total del sistema, usuarios, roles y configuración',
+          permisos: ['DASHBOARD_VIEW', 'USERS_VIEW', 'USERS_MANAGE', 'ROLES_MANAGE', 'AUDIT_VIEW', 'INVENTARIO_ACCESS', 'VENTAS_ACCESS', 'LOGISTICA_ACCESS', 'SSOMA_ACCESS']
+        },
+        {
+          id_rol: 'ROL_SUPERVISOR',
+          nombre_rol: 'Supervisor de Operaciones',
+          descripcion: 'Gestión de inventario, ventas, logística, SSOMA y reportes',
+          permisos: ['DASHBOARD_VIEW', 'USERS_VIEW', 'INVENTARIO_ACCESS', 'VENTAS_ACCESS', 'LOGISTICA_ACCESS', 'SSOMA_ACCESS']
+        }
+      ];
+
+      const mockPerms = [
+        { codigo_permiso: 'DASHBOARD_VIEW', modulo: 'CORE', descripcion: 'Visualizar panel principal' },
+        { codigo_permiso: 'USERS_VIEW', modulo: 'USUARIOS', descripcion: 'Listar usuarios' },
+        { codigo_permiso: 'USERS_MANAGE', modulo: 'USUARIOS', descripcion: 'Crear y editar usuarios' },
+        { codigo_permiso: 'ROLES_MANAGE', modulo: 'SEGURIDAD', descripcion: 'Configurar matriz RBAC' },
+        { codigo_permiso: 'AUDIT_VIEW', modulo: 'SEGURIDAD', descripcion: 'Consultar auditoría' },
+        { codigo_permiso: 'INVENTARIO_ACCESS', modulo: 'INVENTARIO', descripcion: 'Acceso a Inventario' },
+        { codigo_permiso: 'VENTAS_ACCESS', modulo: 'VENTAS', descripcion: 'Acceso a Ventas' },
+        { codigo_permiso: 'LOGISTICA_ACCESS', modulo: 'LOGISTICA', descripcion: 'Acceso a Logística' },
+        { codigo_permiso: 'SSOMA_ACCESS', modulo: 'SSOMA', descripcion: 'Acceso a SSOMA' }
+      ];
+
+      const mockUsers = [
+        {
+          id_usuario: 'USR_0001',
+          nombre_completo: 'Rogerr Carvajal (Admin)',
+          email: 'admin@empresa.com',
+          rol_id: 'ROL_ADMIN',
+          nombre_rol: 'Administrador Global',
+          estado: 'ACTIVO',
+          permisos: mockRoles[0].permisos
+        },
+        {
+          id_usuario: 'USR_0002',
+          nombre_completo: 'Supervisor Operaciones SSOMA',
+          email: 'supervisor@empresa.com',
+          rol_id: 'ROL_SUPERVISOR',
+          nombre_rol: 'Supervisor de Operaciones',
+          estado: 'ACTIVO',
+          permisos: mockRoles[1].permisos
+        }
+      ];
+
+      function handle(method, args) {
+        if (method === 'apiGetBootstrapState') {
+          return {
+            success: true,
+            authenticated: Boolean(args[0]),
+            config: { allowPublicRegistration: true },
+            user: mockUsers[0],
+            catalogs: { roles: mockRoles, permissions: mockPerms }
+          };
+        }
+        if (method === 'apiLogin') {
+          const email = (args[0] && args[0].email) || '';
+          const user = mockUsers.find(u => u.email === email.toLowerCase()) || mockUsers[0];
+          return {
+            success: true,
+            message: 'Bienvenido, ' + user.nombre_completo,
+            sessionToken: 'LOCAL_PREVIEW_TOKEN',
+            user: user,
+            catalogs: { roles: mockRoles, permissions: mockPerms }
+          };
+        }
+        if (method === 'apiGetAdminDashboardData') {
+          return {
+            success: true,
+            metrics: { totalUsers: mockUsers.length, activeUsers: mockUsers.length, activeSessions: 1 },
+            users: mockUsers,
+            roles: mockRoles,
+            permissions: mockPerms,
+            settings: { ALLOW_PUBLIC_REGISTRATION: 'true', SESSION_TTL_MINUTES: '120', MAX_LOGIN_ATTEMPTS: '5' },
+            auditLogs: [
+              { timestamp: new Date().toISOString(), id_usuario: 'USR_0001', email: 'admin@empresa.com', evento: 'LOGIN_EXITOSO', modulo: 'AUTH', resultado: 'OK', detalle: 'Sesión iniciada correctamente' }
+            ]
+          };
+        }
+        return { success: true, message: 'Operación procesada correctamente.' };
+      }
+
+      return { handle };
+    })();
+
+    document.addEventListener('DOMContentLoaded', () => {
+      AppController.init();
+    });
+  </script>
+</body>
+</html>
